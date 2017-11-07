@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+	http://www.springframework.org/schema/context 
+	http://www.springframework.org/schema/context/spring-context.xsd">
+	
+	<!-- 开启控制反转注解的支持 -->
+	<context:component-scan base-package="com.wez.sims">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+	
+	<!-- 1 配置SecurityManager(安全管理器) -->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+    	<!-- 缓存管理器 -->
+        <property name="cacheManager" ref="cacheManager"/>
+        <!-- 域 -->
+        <property name="realm" ref="jdbcRealm"/>
+    </bean>
+
+	<!-- 
+		2  配置CacheManager(缓存管理器)
+		2.1 引入ehcache的jar包和配置文件
+	 -->
+    <bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+        <property name="cacheManagerConfigFile" value="classpath:ehcache.xml"/>
+    </bean>
+
+    <!-- 
+    	3 配置Realm
+    	3.1 直接实现了
+     -->
+    <bean id="jdbcRealm" class="com.wez.shiro02.realm.ShiroRealm"></bean>
+
+    <!-- 4 配置LifecycleBeanPostProcessor(生命周期bean的post管理器)，可以自动的调用spring IoC容器中shiro bean的生命周期方法； -->
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>
+
+    <!-- 5 启用IoC容器中使用shiro注解，但必须配置了LifecycleBeanPostProcessor之后才可以使用； -->
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+          depends-on="lifecycleBeanPostProcessor"/>
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager"/>
+    </bean>
+
+    <!-- 
+    	6 配置ShiroFilter
+    	6.1 该bean的id必须和web.xml中配置的ShiroFilter的<filter-name>一致；
+     -->
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <!-- 登陆页面 -->
+        <property name="loginUrl" value="/login.jsp"/>
+        <!-- 登陆成功后跳转到的页面 -->
+        <property name="successUrl" value="/loginSuccess.jsp"/>
+        <!-- 没有权限跳转到的页面 -->
+        <property name="unauthorizedUrl" value="/unauthorized.jsp"/>
+        <!-- 
+        	配置页面的访问权限
+        	a）anon：表示可以匿名访问；
+        	b）authc：表示认证（即登陆）后才可以访问；
+         -->
+        <property name="filterChainDefinitions">
+            <value>
+                /login.jsp = anon
+                # 其他请求需要认证
+            	/** = authc
+            </value>
+        </property>
+    </bean>
+</beans>
